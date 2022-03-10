@@ -1,0 +1,2 @@
+emoji-country-flag
+pyTelegramBotAPI

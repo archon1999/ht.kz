@@ -34,13 +34,15 @@ class CallTypes():
 
     FindTours = CallTypeMeta('FindTours')
     About = CallTypeMeta('About')
-    Country = CallTypeMeta('County', 'id__int')
-    City = CallTypeMeta('County', 'id__int')
+    Country = CallTypeMeta('Country', 'id')
+    Region = CallTypeMeta('Region', 'id')
+    DepartyCity = CallTypeMeta('DepartyCity', 'id')
     Month = CallTypeMeta('Month', 'number__int')
     Day = CallTypeMeta('Day', 'number__int')
     Adult = CallTypeMeta('Adult', 'number__int')
     Child = CallTypeMeta('Child', 'number__int')
     ChildAges = CallTypeMeta('ChildAges', 'number__int')
+    SearchResult = CallTypeMeta('SearchResult', 'index__int')
 
     Nothing = CallTypeMeta('Nothing')
 
