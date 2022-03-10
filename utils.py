@@ -1,8 +1,6 @@
 import requests
 
-from bot import config
-from bot.call_types import CallTypes
-from backend.templates import Smiles
+from call_types import CallTypes
 
 import telebot
 from telebot import types

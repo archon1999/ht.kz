@@ -32,7 +32,7 @@ class CallTypes():
     VALUES_SEP = '#'
     CLASS_NAME = 'type'
 
-    TourSearch = CallTypeMeta('TourSearch')
+    FindTours = CallTypeMeta('FindTours')
     About = CallTypeMeta('About')
     Country = CallTypeMeta('County', 'id__int')
     City = CallTypeMeta('County', 'id__int')
@@ -69,4 +69,3 @@ class CallTypes():
             map(lambda key: f'{key}{cls.ARG_SEP}{args[key]}', args)
         )
         return call_data
-
