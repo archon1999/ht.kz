@@ -8,13 +8,14 @@ from call_types import CallTypes
 
 import flag
 from telebot import TeleBot, types
+from django.core.paginator import Paginator
 
 
 search_filter_dict = defaultdict(dict)
 locale.setlocale(locale.LC_ALL, 'ru_RU.utf8')
 
 
-def start_command_handler(bot: TeleBot, message):
+async def start_command_handler(bot: TeleBot, message):
     find_tours_button = utils.make_inline_button(
         text='🏝 Найти туры',
         CallType=CallTypes.FindTours,
@@ -27,14 +28,14 @@ def start_command_handler(bot: TeleBot, message):
     keyboard.add(find_tours_button)
     keyboard.add(about_button)
 
-    bot.send_message(
+    await bot.send_message(
         text='<b>🛠 Меню</b>',
         chat_id=message.chat.id,
         reply_markup=keyboard,
     )
 
 
-def find_tours_callback_query_handler(bot: TeleBot, call):
+async def find_tours_callback_query_handler(bot: TeleBot, call):
     buttons = []
     countries = ht_parser.get_countries()
     for country_id in countries:
@@ -51,7 +52,7 @@ def find_tours_callback_query_handler(bot: TeleBot, call):
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     keyboard.add(*buttons)
     text = '<b>❓В какую страну вы бы хотели полететь?\n🖋 Выберите страну</b>'
-    bot.edit_message_text(
+    await bot.edit_message_text(
         text=text,
         chat_id=call.message.chat.id,
         message_id=call.message.id,
@@ -59,7 +60,7 @@ def find_tours_callback_query_handler(bot: TeleBot, call):
     )
 
 
-def country_callback_query_handler(bot: TeleBot, call):
+async def country_callback_query_handler(bot: TeleBot, call):
     global search_filter_dict
     call_type = CallTypes.parse_data(call.data)
     country_id = call_type.id
@@ -87,7 +88,7 @@ def country_callback_query_handler(bot: TeleBot, call):
     )
     keyboard.add(countries_button)
     text = '<b>❓В какой город?\n🖋 Выберите регион</b>'
-    bot.edit_message_text(
+    await bot.edit_message_text(
         text=text,
         chat_id=call.message.chat.id,
         message_id=call.message.id,
@@ -95,7 +96,7 @@ def country_callback_query_handler(bot: TeleBot, call):
     )
 
 
-def region_callback_query_handler(bot: TeleBot, call):
+async def region_callback_query_handler(bot: TeleBot, call):
     global search_filter_dict
     call_type = CallTypes.parse_data(call.data)
     region_id = call_type.id
@@ -121,7 +122,7 @@ def region_callback_query_handler(bot: TeleBot, call):
     )
     keyboard.add(countries_button)
     text = '<b>❓С какого города?\n🖋 Выберите город</b>'
-    bot.edit_message_text(
+    await bot.edit_message_text(
         text=text,
         chat_id=call.message.chat.id,
         message_id=call.message.id,
@@ -129,7 +130,7 @@ def region_callback_query_handler(bot: TeleBot, call):
     )
 
 
-def departy_city_callback_query_handler(bot: TeleBot, call):
+async def departy_city_callback_query_handler(bot: TeleBot, call):
     global search_filter_dict
     call_type = CallTypes.parse_data(call.data)
     city_id = call_type.id
@@ -156,7 +157,7 @@ def departy_city_callback_query_handler(bot: TeleBot, call):
     keyboard.add(region_button)
 
     text = '<b>❓В какой месяц?\n🖋 Выберите месяц</b>'
-    bot.edit_message_text(
+    await bot.edit_message_text(
         text=text,
         chat_id=call.message.chat.id,
         message_id=call.message.id,
@@ -164,7 +165,7 @@ def departy_city_callback_query_handler(bot: TeleBot, call):
     )
 
 
-def month_callback_query_handler(bot: TeleBot, call):
+async def month_callback_query_handler(bot: TeleBot, call):
     global search_filter_dict
     call_type = CallTypes.parse_data(call.data)
     month = call_type.number
@@ -198,7 +199,7 @@ def month_callback_query_handler(bot: TeleBot, call):
     keyboard.add(city_button)
 
     text = '<b>❓В какой день?\n🖋 Выберите день</b>'
-    bot.edit_message_text(
+    await bot.edit_message_text(
         text=text,
         chat_id=call.message.chat.id,
         message_id=call.message.id,
@@ -206,7 +207,7 @@ def month_callback_query_handler(bot: TeleBot, call):
     )
 
 
-def day_callback_query_handler(bot: TeleBot, call):
+async def day_callback_query_handler(bot: TeleBot, call):
     global search_filter_dict
     call_type = CallTypes.parse_data(call.data)
     day = call_type.number
@@ -232,7 +233,7 @@ def day_callback_query_handler(bot: TeleBot, call):
     keyboard.add(month_button)
 
     text = '<b>❓Сколько взрослых?\n🖋 Выберите</b>'
-    bot.edit_message_text(
+    await bot.edit_message_text(
         text=text,
         chat_id=call.message.chat.id,
         message_id=call.message.id,
@@ -240,7 +241,7 @@ def day_callback_query_handler(bot: TeleBot, call):
     )
 
 
-def adult_callback_query_handler(bot: TeleBot, call):
+async def adult_callback_query_handler(bot: TeleBot, call):
     global search_filter_dict
     call_type = CallTypes.parse_data(call.data)
     adult = call_type.number
@@ -265,7 +266,7 @@ def adult_callback_query_handler(bot: TeleBot, call):
     keyboard.add(day_button)
 
     text = '<b>❓Сколько детей?\n🖋 Выберите</b>'
-    bot.edit_message_text(
+    await bot.edit_message_text(
         text=text,
         chat_id=call.message.chat.id,
         message_id=call.message.id,
@@ -273,12 +274,12 @@ def adult_callback_query_handler(bot: TeleBot, call):
     )
 
 
-def child_callback_query_handler(bot: TeleBot, call):
+async def child_callback_query_handler(bot: TeleBot, call):
     global search_filter_dict
     call_type = CallTypes.parse_data(call.data)
     child = call_type.number
     if child == 0:
-        send_tours(bot, call)
+        await send_tours(bot, call)
         return
 
     search_filter_dict[call.message.id]['child'] = child
@@ -302,7 +303,7 @@ def child_callback_query_handler(bot: TeleBot, call):
     keyboard.add(adult_button)
 
     text = '<b>❓Возраст детей?\n🖋 Выберите</b>'
-    bot.edit_message_text(
+    await bot.edit_message_text(
         text=text,
         chat_id=call.message.chat.id,
         message_id=call.message.id,
@@ -310,46 +311,127 @@ def child_callback_query_handler(bot: TeleBot, call):
     )
 
 
-def child_ages_callback_query_handler(bot: TeleBot, call):
+async def child_ages_callback_query_handler(bot: TeleBot, call):
     global search_filter_dict
     call_type = CallTypes.parse_data(call.data)
     child_ages = call_type.number
     search_filter_dict[call.message.id]['child_ages'] = child_ages
-    send_tours(bot, call)
+    await send_tours(bot, call)
 
 
-def send_tours(bot: TeleBot, call):
+def get_search_filter_result_info(data: ht_parser.SearchFilterResult) -> str:
+    return f'{"⭐️"*data.rating_star} <i>{data.rating}</i>\n<b><u>{data.title}</u></b>\n\n<i>{data.region}</i>'
+
+
+def get_day_buttons(search_filter_result_index):
+    buttons = []
+    for number in range(3, 15):
+        buttons.append(utils.make_inline_button(
+            text=str(number),
+            CallType=CallTypes.FindToursDay,
+            day=number,
+            index=search_filter_result_index,
+        ))
+
+    return buttons
+
+
+async def send_tours(bot: TeleBot, call):
     global search_filter_dict
-    bot.edit_message_text(
+    await bot.edit_message_text(
         text='<b>🔁 Идет поиск туров</b>',
         chat_id=call.message.chat.id,
         message_id=call.message.id,
     )
 
-    result = ht_parser.parse_tours(search_filter_dict[call.message.id])
-    search_filter_dict[call.message.id]['search_filter_result'] = result
+    result, html = await ht_parser.parse_tours(search_filter_dict[call.message.id])
     if not result:
         text = '<b>❌ По вашему запросу ничего не найдено</b>'
-    else:
-        text = '<b>🏝 Найденные туры</b>'
-        tours_info = str()
-        buttons = []
-        for index, data in enumerate(result, 1):
-            tour_button = utils.make_inline_button(
-                text=str(index),
-                CallType=CallTypes.SearchResult,
-                index=index,
-            )
-            buttons.append(tour_button)
-            tour_info = f'<b>{index}.</b> <b>{data.title}</b> <i>({data.rating})</i>'
-            tours_info += tour_info + '\n'
-
-        keyboard = types.InlineKeyboardMarkup(row_width=3)
-        keyboard.add(*buttons)
-        text += utils.text_to_double_line(tours_info)
-        bot.edit_message_text(
+        await bot.edit_message_text(
             text=text,
             chat_id=call.message.chat.id,
             message_id=call.message.id,
+        )
+    else:
+        search_filter_dict[call.message.id]['search_filter_result'] = result
+        search_filter_dict[call.message.id]['html'] = html
+        data = result[0]
+        paginator = Paginator(result, 1)
+        page = paginator.get_page(1)
+        await bot.edit_message_text(
+            text='<b>📶 Результаты поиска</b>',
+            chat_id=call.message.chat.id,
+            message_id=call.message.id,
+        )
+        text = utils.text_to_double_line(get_search_filter_result_info(data))
+        text = '<b>🏝 Тур</b>\n' + text
+        keyboard = utils.make_page_keyboard(
+            page=page,
+            CallType=CallTypes.SearchResult,
+        )
+        keyboard.add(utils.make_inline_button(
+            text='Показать туры (Выберите количество дней)',
+            CallType=CallTypes.Nothing,
+        ))
+        buttons = get_day_buttons(0)
+        keyboard.add(*buttons)
+        message = await bot.send_photo(
+            photo=data.image_src,
+            chat_id=call.message.chat.id,
+            caption=text,
             reply_markup=keyboard,
         )
+        search_filter_dict[message.id] = search_filter_dict[call.message.id]
+
+
+async def search_result_callback_query_handler(bot: TeleBot, call):
+    global search_filter_dict
+    call_type = CallTypes.parse_data(call.data)
+    page_number = call_type.page
+    result = search_filter_dict[call.message.id]['search_filter_result']
+    data = result[page_number-1]
+    paginator = Paginator(result, 1)
+    page = paginator.get_page(page_number)
+    keyboard = utils.make_page_keyboard(
+        page=page,
+        CallType=CallTypes.SearchResult,
+    )
+    keyboard.add(utils.make_inline_button(
+        text='Показать туры (Выберите количество дней)',
+        CallType=CallTypes.Nothing,
+    ))
+    buttons = get_day_buttons(page_number-1)
+    keyboard.add(*buttons)
+    text = utils.text_to_double_line(get_search_filter_result_info(data))
+    text = '<b>🏝 Тур</b>\n' + text
+    await bot.edit_message_caption(
+        message_id=call.message.id,
+        chat_id=call.message.chat.id,
+        caption=text,
+        reply_markup=keyboard,
+    )
+
+
+async def find_tours_day_callback_query_handler(bot: TeleBot, call):
+    global search_filter_dict
+    call_type = CallTypes.parse_data(call.data)
+    day = call_type.day
+    index = call_type.index
+    search_filter = search_filter_dict[call.message.id]
+    tours = await ht_parser.parse_tours_day(
+        search_filter=search_filter,
+        index=index,
+        day=day,
+    )
+    tours_info = str()
+    for index, tour in enumerate(tours, 1):
+        tour_info = '  '.join([f'<b>{tour.date}</b>', 
+                               f'<i>{tour.departy_city}</i>',
+                               f'<code>{tour.days}</code>',
+                               f'<b>{tour.food}</b>',
+                               f'<i>{tour.people}</i>',
+                               f'<b>{tour.price}</b>'])
+        tours_info += tour_info + '\n'
+
+    text = '<b>🏝 Туры</b>' + utils.text_to_double_line(tours_info)
+    await bot.send_message(call.message.chat.id, text)

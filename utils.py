@@ -6,6 +6,7 @@ import telebot
 from telebot import types
 
 from django.utils import timezone
+from django.core.paginator import Page
 
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
@@ -114,36 +115,30 @@ def get_file_text(file_id):
         return response.text
 
 
-def make_page_keyboard(has_next_page, call_type):
+def make_page_keyboard(page: Page, CallType, **kwargs):
     keyboard = types.InlineKeyboardMarkup(row_width=5)
     buttons = []
-    page = call_type.page
-    page -= 1
-    if page >= 1:
-        call_type.page = page
-        call_data = CallTypes.make_data(call_type)
-        prev_page_button = types.InlineKeyboardButton(
-            text=f'{Smiles.PREV_PAGE}',
-            callback_data=call_data,
+    if page.has_previous():
+        prev_page_button = make_inline_button(
+            text=f'⬅️',
+            CallType=CallType,
+            page=page.previous_page_number(),
+            **kwargs,
         )
         buttons.append(prev_page_button)
 
-    page += 1
-    call_type.page = page
-    call_data = CallTypes.make_data(CallTypes.Nothing())
-    page_number_button = types.InlineKeyboardButton(
-        text=f'{call_type.page}',
-        callback_data=call_data,
+    page_number_button = make_inline_button(
+        text=str(page.number),
+        CallType=CallTypes.Nothing,
     )
     buttons.append(page_number_button)
 
-    page += 1
-    if has_next_page:
-        call_type.page = page
-        call_data = CallTypes.make_data(call_type)
-        next_page_button = types.InlineKeyboardButton(
-            text=f'{Smiles.NEXT_PAGE}',
-            callback_data=call_data
+    if page.has_next():
+        next_page_button = make_inline_button(
+            text=f'➡️',
+            CallType=CallType,
+            page=page.next_page_number(),
+            **kwargs,
         )
         buttons.append(next_page_button)
 

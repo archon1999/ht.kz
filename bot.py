@@ -1,4 +1,6 @@
-import telebot
+import asyncio
+
+from telebot import async_telebot
 
 import handlers
 from call_types import CallTypes
@@ -6,17 +8,16 @@ from call_types import CallTypes
 
 TOKEN = '5242049055:AAEe6YxDOuZfqsAouBxQRTNDbh_wg1r2eSI'
 
-bot = telebot.TeleBot(
+bot = async_telebot.AsyncTeleBot(
     token=TOKEN,
-    threaded=False,
     parse_mode='HTML',
 )
 
 
 @bot.message_handler(content_types=['text'])
-def message_handler(message):
+async def message_handler(message):
     if message.text == '/start':
-        handlers.start_command_handler(bot, message)
+        await handlers.start_command_handler(bot, message)
 
 
 callback_query_handlers = {
@@ -29,18 +30,20 @@ callback_query_handlers = {
     CallTypes.Adult: handlers.adult_callback_query_handler,
     CallTypes.Child: handlers.child_callback_query_handler,
     CallTypes.ChildAges: handlers.child_ages_callback_query_handler,
+    CallTypes.SearchResult: handlers.search_result_callback_query_handler,
+    CallTypes.FindToursDay: handlers.find_tours_day_callback_query_handler,
 }
 
 
 @bot.callback_query_handler(func=lambda _: True)
-def callback_query_handler(call):
+async def callback_query_handler(call):
     call_type = CallTypes.parse_data(call.data)
     for CallType, query_handler in callback_query_handlers.items():
         if call_type.__class__.__name__ == CallType.__name__:
-            query_handler(bot, call)
+            await query_handler(bot, call)
             break
 
 
 if __name__ == "__main__":
-    # bot.polling()
-    bot.infinity_polling()
+    asyncio.run(bot.polling())
+    # asyncio.run(bot.infinity_polling())

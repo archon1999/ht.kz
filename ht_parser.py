@@ -1,3 +1,4 @@
+import traceback
 import requests
 import requests_html
 from bs4 import BeautifulSoup
@@ -17,6 +18,7 @@ class SearchFilterResult():
     def __init__(self):
         self.title = str()
         self.rating = str()
+        self.rating_star = int()
         self.region = str()
         self.image_src = str()
         self.tours: list[Tour] = []
@@ -45,7 +47,8 @@ def parse_tour(html):
     print(soup.find(class_='tour-list-place'))
 
 
-async def parse_tours(search_filter) -> list[SearchFilterResult]:
+async def parse_tours(search_filter) -> tuple[list[SearchFilterResult],
+                                              requests_html.HTML]:
     url = 'https://ht.kz/findtours'
     session = requests_html.AsyncHTMLSession()
     date = '.'.join(map(str, [search_filter['day'],
@@ -62,7 +65,7 @@ async def parse_tours(search_filter) -> list[SearchFilterResult]:
         'search': '1',
         'groupResultByHotels': '1',
         'bank': '',
-        'splitRooms': '1',
+        'splitRooms': '0',
         'delta': '0',
         'departCity': search_filter['departy_city_id'],
         'nightsFrom': '1',
@@ -70,22 +73,7 @@ async def parse_tours(search_filter) -> list[SearchFilterResult]:
         'dateFrom': date,
     }
     response: requests_html.HTMLResponse = await session.get(url, params=params)
-    script = '''
-        () => {
-            return $("app-tour-prices").size()
-        }
-    '''
-    script = '''
-        () => {
-            var html = $("div[class='tour-list-place']").html();
-            return html;
-        }
-    '''
-    await response.html.arender(timeout=120, sleep=5, keep_page=True)
-    page = response.html.page
-    print(await page.evaluate(script))
-    await page.screenshot(path='a.png')
-    return
+    await response.html.arender(timeout=120, sleep=5)
     html = response.html.html
     soup = BeautifulSoup(html, 'lxml')
     result = []
@@ -97,8 +85,86 @@ async def parse_tours(search_filter) -> list[SearchFilterResult]:
         except Exception:
             pass
 
+        search_obj.rating_star = len(tag.find_all(src='/imgm/fb/icons/star.png'))
         search_obj.region = tag.find(class_='ng-hotel-region').text.strip()
         search_obj.image_src = tag.find('img').get('src')
         result.append(search_obj)
 
-    return result
+    await response.html.browser.close()
+    return result, response.html
+
+
+async def parse_tours_day(search_filter, index, day) -> list[Tour]:
+    url = 'https://ht.kz/findtours'
+    session = requests_html.AsyncHTMLSession()
+    date = '.'.join(map(str, [search_filter['day'],
+                              search_filter['month'],
+                              search_filter['year']]))
+    params = {
+        'region': search_filter['region_id'],
+        'country': search_filter['country_id'],
+        'stars': 'any',
+        'adult': search_filter['adult'],
+        'child': search_filter.get('child', 0),
+        'hotel': '',
+        'childAges': search_filter.get('child_ages', ''),
+        'search': '1',
+        'groupResultByHotels': '1',
+        'bank': '',
+        'splitRooms': '0',
+        'delta': '0',
+        'departCity': search_filter['departy_city_id'],
+        'nightsFrom': '1',
+        'nightsTo': '14',
+        'dateFrom': date,
+    }
+    response: requests_html.HTMLResponse = await session.get(url, params=params)
+    await response.html.arender(timeout=120, sleep=5, keep_page=True)
+    page = response.html.page
+    script = f'''
+        $('button[class="ng-view-tours showHotelInfo"]').eq({index}).click();
+    '''
+    await page.evaluate(script)
+    await page.waitForSelector('.tour-list-place > div')
+    for e in await page.querySelectorAll('button[class="nav-button btn-clear"]'):
+        try:
+            text = await page.evaluate('(element) => element.textContent', e)
+            text = text.strip()
+            days, _ = text.split()
+            days = int(days)
+            if days == day:
+                await e.click()
+                selector = f'.tour-list-place b:contains("{text}")'
+                await page.waitForSelector(selector)
+                print(text)
+                print(await page.querySelector(selector))
+        except Exception:
+            traceback.print_exc()
+
+    script = '''
+        () => {
+            return $('.tour-list-place').html();
+        }
+    '''
+    soup = BeautifulSoup(await page.evaluate(script), 'lxml')
+    tours = []
+    for tag in soup.find_all(attrs={'class': 'item-info'}):
+        tour = Tour()
+        for index, li_tag in enumerate(tag.find_all('li')):
+            if index == 0:
+                tour.date = li_tag.find('b').text.strip()
+            elif index == 1:
+                tour.departy_city = li_tag.find('b').text.strip()
+            elif index == 2:
+                tour.days = li_tag.find('b').text.strip()
+            elif index == 3:
+                tour.food = li_tag.find('b').text.strip()
+            elif index == 4:
+                tour.people = li_tag.find('span').text.strip()
+            elif index == 5:
+                tour.price = li_tag.find('b').text.strip()
+
+        tours.append(tour)
+
+    await response.html.browser.close()
+    return tours
