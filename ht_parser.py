@@ -18,6 +18,7 @@ class SearchFilterResult():
         self.title = str()
         self.rating = str()
         self.region = str()
+        self.image_src = str()
         self.tours: list[Tour] = []
 
 
@@ -44,9 +45,9 @@ def parse_tour(html):
     print(soup.find(class_='tour-list-place'))
 
 
-def parse_tours(search_filter) -> list[SearchFilterResult]:
+async def parse_tours(search_filter) -> list[SearchFilterResult]:
     url = 'https://ht.kz/findtours'
-    session = requests_html.HTMLSession()
+    session = requests_html.AsyncHTMLSession()
     date = '.'.join(map(str, [search_filter['day'],
                               search_filter['month'],
                               search_filter['year']]))
@@ -68,12 +69,27 @@ def parse_tours(search_filter) -> list[SearchFilterResult]:
         'nightsTo': '14',
         'dateFrom': date,
     }
-    response: requests_html.HTMLResponse = session.get(url, params=params)
-    response.html.render(timeout=120, scrolldown=True, sleep=5)
+    response: requests_html.HTMLResponse = await session.get(url, params=params)
+    script = '''
+        () => {
+            return $("app-tour-prices").size()
+        }
+    '''
+    script = '''
+        () => {
+            var html = $("div[class='tour-list-place']").html();
+            return html;
+        }
+    '''
+    await response.html.arender(timeout=120, sleep=5, keep_page=True)
+    page = response.html.page
+    print(await page.evaluate(script))
+    await page.screenshot(path='a.png')
+    return
     html = response.html.html
     soup = BeautifulSoup(html, 'lxml')
     result = []
-    for index, tag in enumerate(soup.find_all('app-tour'), 1):
+    for tag in soup.find_all('app-tour'):
         search_obj = SearchFilterResult()
         search_obj.title = tag.find(class_='ng-hotel-name').text.strip()
         try:
@@ -82,6 +98,7 @@ def parse_tours(search_filter) -> list[SearchFilterResult]:
             pass
 
         search_obj.region = tag.find(class_='ng-hotel-region').text.strip()
+        search_obj.image_src = tag.find('img').get('src')
         result.append(search_obj)
 
     return result
