@@ -44,6 +44,7 @@ class CallTypes():
     ChildAges = CallTypeMeta('ChildAges', 'number__int')
     SearchResult = CallTypeMeta('SearchResult', 'page__int')
     FindToursDay = CallTypeMeta('FindToursDay', 'day__int', 'index__int')
+    Feedback = CallTypeMeta('Feedback')
 
     Nothing = CallTypeMeta('Nothing')
 

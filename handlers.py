@@ -1,5 +1,6 @@
 import datetime
 import locale
+import importlib
 from collections import defaultdict
 
 import ht_parser
@@ -325,7 +326,7 @@ def get_search_filter_result_info(data: ht_parser.SearchFilterResult) -> str:
 
 def get_day_buttons(search_filter_result_index):
     buttons = []
-    for number in range(3, 15):
+    for number in range(3, 13):
         buttons.append(utils.make_inline_button(
             text=str(number),
             CallType=CallTypes.FindToursDay,
@@ -347,10 +348,17 @@ async def send_tours(bot: TeleBot, call):
     result, html = await ht_parser.parse_tours(search_filter_dict[call.message.id])
     if not result:
         text = '<b>❌ По вашему запросу ничего не найдено</b>'
+        reply_button = utils.make_inline_button(
+            text='🔁 Искать заново',
+            CallType=CallTypes.FindTours,
+        )
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(reply_button)
         await bot.edit_message_text(
             text=text,
             chat_id=call.message.chat.id,
             message_id=call.message.id,
+            reply_markup=keyboard,
         )
     else:
         search_filter_dict[call.message.id]['search_filter_result'] = result
@@ -370,7 +378,7 @@ async def send_tours(bot: TeleBot, call):
             CallType=CallTypes.SearchResult,
         )
         keyboard.add(utils.make_inline_button(
-            text='Показать туры (Выберите количество дней)',
+            text='Количество дней 🔽',
             CallType=CallTypes.Nothing,
         ))
         buttons = get_day_buttons(0)
@@ -397,23 +405,29 @@ async def search_result_callback_query_handler(bot: TeleBot, call):
         CallType=CallTypes.SearchResult,
     )
     keyboard.add(utils.make_inline_button(
-        text='Показать туры (Выберите количество дней)',
+        text='Количество дней 🔽',
         CallType=CallTypes.Nothing,
     ))
     buttons = get_day_buttons(page_number-1)
     keyboard.add(*buttons)
     text = utils.text_to_double_line(get_search_filter_result_info(data))
     text = '<b>🏝 Тур</b>\n' + text
-    await bot.edit_message_caption(
+    photo = data.image_src
+    await bot.edit_message_media(
+        media=types.InputMediaPhoto(
+            media=photo,
+            caption=text,
+            parse_mode='html',
+        ),
         message_id=call.message.id,
         chat_id=call.message.chat.id,
-        caption=text,
         reply_markup=keyboard,
     )
 
 
 async def find_tours_day_callback_query_handler(bot: TeleBot, call):
-    global search_filter_dict
+    global search_filter_dict, ht_parser
+    ht_parser = importlib.reload(ht_parser)
     call_type = CallTypes.parse_data(call.data)
     day = call_type.day
     index = call_type.index
@@ -434,4 +448,29 @@ async def find_tours_day_callback_query_handler(bot: TeleBot, call):
         tours_info += tour_info + '\n'
 
     text = '<b>🏝 Туры</b>' + utils.text_to_double_line(tours_info)
-    await bot.send_message(call.message.chat.id, text)
+    reply_button = utils.make_inline_button(
+        text='🔁 Искать заново',
+        CallType=CallTypes.FindTours,
+    )
+    feedback_button = utils.make_inline_button(
+        text='🖋 Написать менеджеру',
+        CallType=CallTypes.Feedback,
+    )
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(reply_button)
+    keyboard.add(feedback_button)
+    await bot.send_message(
+        chat_id=call.message.chat.id,
+        text=text,
+        reply_markup=keyboard,
+    )
+
+
+async def about_callback_query_handler(bot: TeleBot, call):
+    with open('about.txt', 'r') as file:
+        text = file.read()
+
+    await bot.send_message(
+        chat_id=call.message.chat.id,
+        text=text,
+    )

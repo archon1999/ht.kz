@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 import traceback
 import requests
 import requests_html
@@ -73,7 +74,8 @@ async def parse_tours(search_filter) -> tuple[list[SearchFilterResult],
         'dateFrom': date,
     }
     response: requests_html.HTMLResponse = await session.get(url, params=params)
-    await response.html.arender(timeout=120, sleep=5)
+    script = '''$("button[class='ng-sort-btn']").eq(0).click()'''
+    await response.html.arender(timeout=120, sleep=5, script=script)
     html = response.html.html
     soup = BeautifulSoup(html, 'lxml')
     result = []
@@ -114,16 +116,27 @@ async def parse_tours_day(search_filter, index, day) -> list[Tour]:
         'splitRooms': '0',
         'delta': '0',
         'departCity': search_filter['departy_city_id'],
-        'nightsFrom': '1',
-        'nightsTo': '14',
+        'nightsFrom': '7',
+        'nightsTo': '8',
         'dateFrom': date,
     }
     response: requests_html.HTMLResponse = await session.get(url, params=params)
-    await response.html.arender(timeout=120, sleep=5, keep_page=True)
-    page = response.html.page
+    script = '''$("button[class='ng-sort-btn']").eq(0).click()'''
+    await response.html.arender(timeout=120, sleep=5,
+                                keep_page=True, script=script)
+    result = search_filter['search_filter_result']
+    data = result[index]
+    soup = BeautifulSoup(response.html.html, 'lxml')
+    for i, tag in enumerate(soup.find_all('app-tour')):
+        title = tag.find(class_='ng-hotel-name').text.strip()
+        if title == data.title:
+            index = i
+            break
+            
     script = f'''
         $('button[class="ng-view-tours showHotelInfo"]').eq({index}).click();
     '''
+    page = response.html.page
     await page.evaluate(script)
     await page.waitForSelector('.tour-list-place > div')
     for e in await page.querySelectorAll('button[class="nav-button btn-clear"]'):
@@ -134,10 +147,15 @@ async def parse_tours_day(search_filter, index, day) -> list[Tour]:
             days = int(days)
             if days == day:
                 await e.click()
-                selector = f'.tour-list-place b:contains("{text}")'
-                await page.waitForSelector(selector)
-                print(text)
-                print(await page.querySelector(selector))
+                selector = f'b:contains("{text}")'
+                for _ in range(30):
+                    selector = f'''$("b:contains('{text}')").size()'''
+                    await page.waitFor(1000)
+                    if await page.evaluate(selector):
+                        break
+
+        except ValueError:
+            continue
         except Exception:
             traceback.print_exc()
 
