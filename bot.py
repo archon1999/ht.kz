@@ -1,12 +1,13 @@
 import asyncio
 from collections import defaultdict
 
-from telebot import async_telebot, TeleBot
+from telebot import async_telebot, TeleBot, types
 
 import handlers
+import utils
 from call_types import CallTypes
 
-FEEDBACK_CHAT_ID = '5055897016'
+FEEDBACK_CHAT_ID = '342420058'
 TOKEN = '5242049055:AAEe6YxDOuZfqsAouBxQRTNDbh_wg1r2eSI'
 
 bot = async_telebot.AsyncTeleBot(
@@ -15,14 +16,14 @@ bot = async_telebot.AsyncTeleBot(
 )
 
 state_dict = defaultdict(int)
+message_dict = defaultdict(str)
 
 
 @bot.message_handler(content_types=['text'])
 async def message_handler(message):
     global state_dict
     if state_dict[message.chat.id]:
-        await handlers.feedback_message_handler(bot, message)
-        state_dict[message.chat.id] = 0
+        await feedback_message_handler(bot, message)
 
     if message.text == '/start':
         await handlers.start_command_handler(bot, message)
@@ -40,10 +41,38 @@ async def feedback_message_handler(bot: TeleBot, message):
         chat_id=FEEDBACK_CHAT_ID,
         text=message.text,
     )
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True,
+                                         one_time_keyboard=True)
+    keyboard.add(types.KeyboardButton(text='📞 Отправить',
+                                      request_contact=True))
     await bot.send_message(
         chat_id=message.chat.id,
-        text='<b>✔️ Отправлено</b>'
+        text='<b>📞 Отправьте номер телефона</b>',
+        reply_markup=keyboard,
     )
+    state_dict[message.chat.id] = 2
+    message_dict[message.chat.id] = message.text
+
+
+
+@bot.message_handler(content_types=['contact'])
+async def contact_handler(message):
+    phone_number = message.contact.phone_number
+    text = '<b>📝 Новая заявка</b>\n'
+    s = f'<b>👤 Юзернейм:</b> <i>{message.chat.username}</i>\n'
+    s += f'<b>💬 Сообщение:</b> <i>{message_dict[message.chat.id]}</i>\n'
+    s += f'<b>📞 Номер телефона:</b> <i>{phone_number}</i>\n'
+    text += utils.text_to_double_line(s)
+    await bot.send_message(
+        chat_id=FEEDBACK_CHAT_ID,
+        text=text,
+    )
+    await bot.send_message(
+        chat_id=message.chat.id,
+        text='<b>✔️ Отправлено</b>',
+        reply_markup=types.ReplyKeyboardRemove(),
+    )
+    state_dict[message.chat.id] = 0
 
 
 callback_query_handlers = {

@@ -1,4 +1,3 @@
-from multiprocessing.sharedctypes import Value
 import traceback
 import requests
 import requests_html
